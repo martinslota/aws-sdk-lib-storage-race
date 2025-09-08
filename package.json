@@ -19,6 +19,7 @@
   "license": "ISC",
   "type": "module",
   "scripts": {
+    "postinstall": "patch-package",
     "start-aws": "node index.js",
     "start-localstack": "docker compose up --wait && AWS_S3_ENDPOINT=https://s3.localhost.localstack.cloud:4566 node index.js"
   },
@@ -27,6 +28,7 @@
     "@aws-sdk/lib-storage": "3.637.0",
     "dotenv": "^16.4.5",
     "p-timeout": "^6.1.2",
+    "patch-package": "^8.0.0",
     "prettier": "3.3.3"
   },
   "dependencies": {
