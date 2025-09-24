@@ -2,7 +2,7 @@ import { PassThrough } from "node:stream";
 
 import {
   CreateBucketCommand,
-  GetObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -79,32 +79,7 @@ async function uploadStream(body) {
   return key;
 }
 
-async function downloadStream(key) {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
-
-  const response = await s3Client.send(command);
-  return response.Body;
-}
-
-export async function exportStuff() {
-  const batchKeys = [];
-
-  // upload one batch of data
-  {
-    const writer = new PassThrough();
-    const uploadPromise = uploadStream(writer);
-
-    // write some data
-    writer.write("some data");
-    writer.end();
-
-    batchKeys.push(await uploadPromise);
-  }
-
-  // upload another batch of data
+export async function uploadEmptyStream() {
   {
     const writer = new PassThrough();
     const uploadPromise = uploadStream(writer);
@@ -112,32 +87,23 @@ export async function exportStuff() {
     // whoops, it turns out there is no data to write
     writer.end();
 
-    batchKeys.push(await uploadPromise);
-  }
-
-  // concatenate all the batches into a single S3 object
-  {
-    const writer = new PassThrough();
-    const uploadPromise = uploadStream(writer);
-
-    for (const batchKey of batchKeys) {
-      console.log(`Downloading batch with key ${batchKey}...`);
-      const reader = await downloadStream(batchKey);
-      console.log(`Downloaded batch with key ${batchKey}`);
-      for await (const data of reader) {
-        writer.write(data);
-      }
-    }
-
-    writer.end();
     await uploadPromise;
   }
+}
 
-  console.log("Export finished");
+async function putEmptyObject() {
+  const key = `object_${sequenceNumber++}`;
+  const putObject = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    Body: Buffer.from([]),
+  });
+  await s3Client.send(putObject);
 }
 
 await ensureBucketExists();
 
 while (true) {
-  await pTimeout(exportStuff(), { milliseconds: 5_000 });
+  // await pTimeout(uploadEmptyStream(), { milliseconds: 5_000 });
+  await pTimeout(putEmptyObject(), { milliseconds: 5_000 });
 }
